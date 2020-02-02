@@ -6,11 +6,11 @@ import sqlite3
 import pytz
 import re
 #import subprocess
-import time
 
 bot = commands.Bot('$')
 con = sqlite3.connect('krondii.db')
 dt_fmt = '%Y-%m-%d %H:%M'
+newline_str = '%%%%NEWLINE%%%%'
 
 
 ############
@@ -32,7 +32,7 @@ async def check():
         # Send reminder and decrement count
         cur.execute('DELETE FROM reminders WHERE rowid = ?', (rowid,))
         cur.execute('UPDATE users SET reminder_count = reminder_count - 1 WHERE id = ?', (user,))
-        message = message.replace('%%%%NEWLINE%%%%', '\n')
+        message = message.replace(newline_str, '\n')
         await target.send(message)
         sent += 1
         con.commit()
@@ -94,7 +94,7 @@ async def setreminder(ctx, when_and_message, here):
     message = message.strip()
     if not message:
         return
-    message = message.replace('\n', '%%%%NEWLINE%%%%')
+    message = message.replace('\n', newline_str)
     # TODO use relativedelta and allow month specification
     pattern = re.compile('[0-9]+[wdhm]')
     when_rel = pattern.findall(when)
@@ -164,7 +164,7 @@ async def list(ctx):
 
     for when_fmt, channel, message in cur.execute('SELECT datetime,channel,message FROM reminders WHERE user = ? ORDER BY rowid ASC', (user,)):
         num += 1
-        message = message.replace('%%%%NEWLINE%%%%', chr(8629))
+        message = message.replace(newline_str, chr(8629))
         if len(message) > 32:
             message = message[:31] + '~'
         else:
@@ -219,6 +219,7 @@ async def list(ctx):
         r_list += '```'
         await ctx.send(r_list)
 
+# TODO
 #@bot.command(aliases=['remove','del','rm'])
 #async def delete(ctx, which: int):
 #    all_rmds = None
