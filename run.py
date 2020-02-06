@@ -63,14 +63,14 @@ async def check_delay():
     log('Initialized')
 
 @bot.command(aliases=['r'])
-async def remind(ctx, *, when_and_message):
-    await setreminder(ctx, when_and_message, False)
+async def remind(ctx, when, *, message):
+    await setreminder(ctx, when, message, False)
 
 @bot.command(aliases=['rh'])
-async def remindhere(ctx, *, when_and_message):
-    await setreminder(ctx, when_and_message, True)
+async def remindhere(ctx, when, *, message):
+    await setreminder(ctx, when, message, True)
 
-async def setreminder(ctx, when_and_message, here):
+async def setreminder(ctx, when, message, here):
     cur = con.cursor()
     user = ctx.author.id
     now = datetime.now()
@@ -89,11 +89,6 @@ async def setreminder(ctx, when_and_message, here):
     cur.execute('UPDATE users SET reminder_count = reminder_count + 1 WHERE id = ?', (user,))
 
     # Parse schedule time and message
-    when, message = when_and_message.split(':', 1)
-    when = when.strip()
-    message = message.strip()
-    if not message:
-        return
     message = message.replace('\n', newline_str)
     # TODO use relativedelta and allow month specification
     pattern = re.compile('[0-9]+[wdhm]')
@@ -114,10 +109,8 @@ async def setreminder(ctx, when_and_message, here):
                 pass
         when = now + timedelta(weeks=w, days=d, hours=h, minutes=m)
     else:
-        try:
-            when = datetime.strptime(when, dt_fmt)
-        except ValueError:
-            return
+        # TODO do smart parsing
+        pass
 
     if when <= now:
         return
@@ -155,8 +148,7 @@ async def list(ctx):
     cur.execute('SELECT timezone FROM users WHERE id = ?', (user,))
     timezone = cur.fetchone()
     if not timezone:
-        create_user(user)
-        timezone = ('',)
+        return
     timezone = timezone[0]
     if not timezone:
         timezone = 'UTC'
