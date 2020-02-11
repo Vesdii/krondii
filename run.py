@@ -211,23 +211,24 @@ async def list(ctx):
         r_list += '```'
         await ctx.send(r_list)
 
-# TODO
-#@bot.command(aliases=['remove','del','rm'])
-#async def delete(ctx, which: int):
-#    all_rmds = None
-#    with open('reminders') as f:
-#        all_rmds = f.readlines()
-#    rmds = []
-#    for x, y in enumerate(all_rmds):
-#        user_id = y.split(',', 2)[1]
-#        user_id = int(user_id.split(':')[0])
-#        if user_id != ctx.author.id:
-#            continue
-#        rmds.append(x)
-#    del all_rmds[rmds[which-1]]
-#    with open('reminders', 'w') as f:
-#        f.writelines(all_rmds)
-#    await ctx.send('Reminder deleted.', delete_after=5)
+@bot.command(aliases=['remove','del','rm'])
+async def delete(ctx, which: int):
+    cur = con.cursor()
+    user = ctx.author.id
+
+    cur.execute('SELECT rowid FROM reminders WHERE user = ? ORDER BY rowid ASC', (user,))
+    rows = cur.fetchall()
+    if not rows or which < 1 or which > len(rows):
+        return
+
+    # Select rowid from user's reminders
+    which = rows[which-1][0]
+    cur.execute('DELETE FROM reminders WHERE rowid = ?', (which,))
+    cur.execute('UPDATE users SET reminder_count = reminder_count - 1 WHERE id = ?', (user,))
+
+    log(f'Reminder deleted by {ctx.author.name}')
+    await ctx.send('Reminder deleted.')
+    con.commit()
 
 @bot.command(aliases=['timezone'])
 async def tz(ctx, new_timezone=None):
