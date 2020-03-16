@@ -12,6 +12,10 @@ con = sqlite3.connect('krondii.db')
 dt_fmt = '%Y-%m-%d %H:%M'
 newline_str = '%%%%NEWLINE%%%%'
 
+@bot.event
+async def on_command_error(ctx, error):
+    return
+
 
 ############
 # REMINDER #
@@ -62,12 +66,12 @@ async def check_delay():
     await discord.utils.sleep_until(when)
     log('Initialized')
 
-@bot.command(aliases=['r'])
-async def remind(ctx, when, *, message):
+@bot.command('remind', aliases=['r'])
+async def cmd_remind(ctx, when, *, message):
     await setreminder(ctx, when, message, False)
 
-@bot.command(aliases=['rh'])
-async def remindhere(ctx, when, *, message):
+@bot.command('remindhere', aliases=['rh'])
+async def cmd_remindhere(ctx, when, *, message):
     await setreminder(ctx, when, message, True)
 
 async def setreminder(ctx, when, message, here):
@@ -122,7 +126,8 @@ async def setreminder(ctx, when, message, here):
     tz_notice = ''
     if not timezone:
         timezone = 'UTC'
-        tz_notice = '\nYou have not set your timezone, so the reminder will be displayed with UTC time. You may update it with `$tz`.'
+        tz_notice = '\nYou have not set your timezone, so the reminder will be displayed with ' \
+            + 'UTC time. You may update it with `$tz`.'
     timezone = pytz.timezone(timezone)
 
     channel = bot.get_channel(ctx.channel.id)
@@ -137,8 +142,8 @@ async def setreminder(ctx, when, message, here):
     await ctx.send(f'Reminder set for {when_fmt}.{tz_notice}')
     con.commit()
 
-@bot.command(aliases=['l','ls'])
-async def list(ctx):
+@bot.command('list', aliases=['l','ls'])
+async def cmd_list(ctx):
     cur = con.cursor()
     now = datetime.now(pytz.utc)
     user = ctx.author.id
@@ -154,7 +159,8 @@ async def list(ctx):
         timezone = 'UTC'
     timezone = pytz.timezone(timezone)
 
-    for when_fmt, channel, message in cur.execute('SELECT datetime,channel,message FROM reminders WHERE user = ? ORDER BY rowid ASC', (user,)):
+    for when_fmt, channel, message in cur.execute('SELECT datetime,channel,message ' \
+            + 'FROM reminders WHERE user = ? ORDER BY rowid ASC', (user,)):
         num += 1
         message = message.replace(newline_str, chr(8629))
         if len(message) > 32:
@@ -182,13 +188,15 @@ async def list(ctx):
         rel = rel.strip()
         rel = rel.ljust(17)
 
-        # TODO switch first and second row positions
-        r_list += '┌──────────────────┬───────────────────┐\n'
-        r_list += f'│ {when_fmt} | {rel} │\n'
-        r_list += '├───╥──────────────┴───────────────────┤\n'
+        r_list += '┌───╥──────────────────────────────────┐\n'
         r_list += f'│ {num} ║ {message} │\n'
+        r_list += '├───╨──────────────┬───────────────────┤\n'
+        r_list += f'│ {when_fmt} | {rel} │\n'
 
-        if channel:
+        if not channel:
+            r_list += '└──────────────────┴───────────────────┘\n'
+
+        else:
             channel = bot.get_channel(channel)
             server = str(channel.guild)
             channel = str(channel)
@@ -200,19 +208,16 @@ async def list(ctx):
                 server = server[:15] + '~'
             else:
                 server = server.ljust(16)
-            r_list += '├───╨──────────────┬───────────────────┤\n'
+            r_list += '├──────────────────┼───────────────────┤\n'
             r_list += f'│ {server} | #{channel} │\n'
             r_list += '└──────────────────┴───────────────────┘\n'
-
-        else:
-            r_list += '└───╨──────────────────────────────────┘\n'
 
     if num:
         r_list += '```'
         await ctx.send(r_list)
 
-@bot.command(aliases=['remove','del','rm'])
-async def delete(ctx, which: int):
+@bot.command('delete', aliases=['remove','del','rm'])
+async def cmd_delete(ctx, which: int):
     cur = con.cursor()
     user = ctx.author.id
 
@@ -230,11 +235,12 @@ async def delete(ctx, which: int):
     await ctx.send('Reminder deleted.')
     con.commit()
 
-@bot.command(aliases=['timezone'])
-async def tz(ctx, new_timezone=None):
+@bot.command('timezone', aliases=['tz'])
+async def cmd_timezone(ctx, new_timezone=None):
     cur = con.cursor()
     user = ctx.author.id
-    howto = 'Select your timezone from this list, exactly as written:\nhttps://pastebin.com/raw/j2SAHX4r\n`$tz <timezone>`'
+    howto = 'Select your timezone from this list, exactly as written:\n' \
+        + 'https://pastebin.com/raw/j2SAHX4r\n`$tz <timezone>`'
     cur.execute('SELECT timezone FROM users WHERE id = ?', (user,))
     timezone = cur.fetchone()
 
@@ -264,8 +270,8 @@ async def tz(ctx, new_timezone=None):
 #########
 
 # TODO
-#@bot.command()
-#async def cht(ctx, *query):
+#@bot.command('cht')
+#async def cmd_cht(ctx, *query):
 #    query = ['cht'] + list(query)
 #    stdout = None
 #    with subprocess.Popen(query, text=True, stdout=subprocess.PIPE) as proc:
